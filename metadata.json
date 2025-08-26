@@ -1,0 +1,5 @@
+{
+  "name": "Fencing Leaderboard Calculator",
+  "description": "An application to track fencing match results for Epee, Foil, and Sabre disciplines. It calculates and displays leaderboards based on a detailed rating and points algorithm, allowing users to manage fencers and bout history.",
+  "requestFramePermissions": []
+}
