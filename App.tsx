@@ -1,11 +1,10 @@
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Weapon, Fencer, Bout, BoutsByWeapon, LeaderboardEntry } from './types';
 import { usePersistentState } from './hooks/usePersistentState';
 import { calculateLeaderboard } from './services/leaderboardCalculator';
 import Leaderboard from './components/Leaderboard';
 import Modal from './components/Modal';
-import { SwordsIcon, PlusIcon, UsersIcon, HistoryIcon, TrashIcon } from './constants';
+import { SwordsIcon, PlusIcon, UsersIcon, HistoryIcon, TrashIcon, ExportIcon } from './constants';
 
 const App: React.FC = () => {
   const [currentWeapon, setCurrentWeapon] = useState<Weapon>(Weapon.Epee);
@@ -131,7 +130,94 @@ const App: React.FC = () => {
     setModal('addBout');
   };
 
-  const availableFencersForBout = fencers.filter(f => f.id !== fencer1Id && f.id !== fencer2Id);
+  const downloadTextFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportLeaderboard = () => {
+    if (leaderboardData.length === 0) {
+      alert(`No leaderboard data to export for ${currentWeapon}.`);
+      return;
+    }
+
+    const title = `Fencing Leaderboard - ${currentWeapon}`;
+    const date = `Exported on: ${new Date().toLocaleString()}`;
+    const separator = '='.repeat(title.length);
+
+    let content = `${title}\n${date}\n${separator}\n\n`;
+
+    content += 
+        'Rank'.padEnd(6) + 
+        'Name'.padEnd(25) + 
+        'Points'.padEnd(10) + 
+        'Rating'.padEnd(10) + 
+        'Wins'.padEnd(8) + 
+        'Bouts'.padEnd(8) + 
+        'Ref\'d'.padEnd(8) + 
+        '\n';
+    content += 
+        '-'.repeat(5).padEnd(6) + 
+        '-'.repeat(24).padEnd(25) + 
+        '-'.repeat(9).padEnd(10) + 
+        '-'.repeat(9).padEnd(10) + 
+        '-'.repeat(7).padEnd(8) + 
+        '-'.repeat(7).padEnd(8) + 
+        '-'.repeat(7).padEnd(8) + 
+        '\n';
+
+    leaderboardData.forEach((fencer, index) => {
+      content += 
+        `${index + 1}`.padEnd(6) +
+        fencer.name.padEnd(25) +
+        fencer.points.toFixed(0).padEnd(10) +
+        fencer.rating.toFixed(0).padEnd(10) +
+        `${fencer.wins}`.padEnd(8) +
+        `${fencer.bouts}`.padEnd(8) +
+        `${fencer.refereedBouts}`.padEnd(8) +
+        '\n';
+    });
+    
+    downloadTextFile(content, `${currentWeapon}-Leaderboard-${new Date().toISOString().split('T')[0]}.txt`);
+  };
+
+  const handleExportBoutHistory = () => {
+    const currentBouts = bouts[currentWeapon];
+    if (currentBouts.length === 0) {
+      alert(`No bout history to export for ${currentWeapon}.`);
+      return;
+    }
+
+    const title = `Bout History - ${currentWeapon}`;
+    const date = `Exported on: ${new Date().toLocaleString()}`;
+    const separator = '='.repeat(title.length > date.length ? title.length : date.length);
+    
+    let content = `${title}\n${date}\n${separator}\n\n`;
+
+    const sortedBouts = [...currentBouts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    sortedBouts.forEach(bout => {
+        const fencer1Name = fencerMap.get(bout.fencer1Id) || 'Unknown';
+        const fencer2Name = fencerMap.get(bout.fencer2Id) || 'Unknown';
+        const refereeName = fencerMap.get(bout.refereeId) || 'Unknown';
+        const boutDateStr = new Date(bout.date).toLocaleDateString();
+
+        content += `Date: ${boutDateStr}\n`;
+        content += `Bout: ${fencer1Name} vs ${fencer2Name}\n`;
+        content += `Score: ${bout.score1} - ${bout.score2}\n`;
+        content += `Referee: ${refereeName}\n`;
+        content += `----------------------------------------\n`;
+    });
+
+    downloadTextFile(content, `${currentWeapon}-Bout-History-${new Date().toISOString().split('T')[0]}.txt`);
+  };
 
   return (
     <div className="min-h-screen bg-primary font-sans">
@@ -168,6 +254,12 @@ const App: React.FC = () => {
           </button>
           <button onClick={() => setModal('manageBouts')} className="flex items-center gap-2 bg-secondary hover:bg-primary/80 text-light font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105">
              <HistoryIcon className="w-5 h-5"/> Bout History
+          </button>
+          <button onClick={handleExportLeaderboard} className="flex items-center gap-2 bg-secondary hover:bg-primary/80 text-light font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105">
+            <ExportIcon className="w-5 h-5"/> Export Leaderboard
+          </button>
+          <button onClick={handleExportBoutHistory} className="flex items-center gap-2 bg-secondary hover:bg-primary/80 text-light font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105">
+            <ExportIcon className="w-5 h-5"/> Export Bout History
           </button>
         </div>
 
